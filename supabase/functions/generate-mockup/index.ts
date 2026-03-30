@@ -17,43 +17,20 @@ serve(async (req) => {
       throw new Error("LOVABLE_API_KEY is not configured");
     }
 
-    const { baseImageUrl, logoUrl, prompt } = await req.json();
+    const { baseImageDataUrl, logoDataUrl, prompt } = await req.json();
 
-    if (!baseImageUrl || !logoUrl || !prompt) {
+    if (!baseImageDataUrl || !logoDataUrl || !prompt) {
       return new Response(
-        JSON.stringify({ error: "Missing required fields: baseImageUrl, logoUrl, prompt" }),
+        JSON.stringify({ error: "Missing required fields: baseImageDataUrl, logoDataUrl, prompt" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    // Fetch both images and convert to base64
-    const [baseImageResp, logoResp] = await Promise.all([
-      fetch(baseImageUrl),
-      fetch(logoUrl),
-    ]);
+    console.log("Calling AI gateway with model: google/gemini-3.1-flash-image-preview");
+    console.log("Base image data URL length:", baseImageDataUrl.length);
+    console.log("Logo data URL length:", logoDataUrl.length);
 
-    if (!baseImageResp.ok) {
-      throw new Error(`Failed to fetch base image: ${baseImageResp.status}`);
-    }
-    if (!logoResp.ok) {
-      throw new Error(`Failed to fetch logo: ${logoResp.status}`);
-    }
-
-    const baseImageBuffer = await baseImageResp.arrayBuffer();
-    const logoBuffer = await logoResp.arrayBuffer();
-
-    const baseImageB64 = btoa(
-      new Uint8Array(baseImageBuffer).reduce((s, b) => s + String.fromCharCode(b), "")
-    );
-    const logoB64 = btoa(
-      new Uint8Array(logoBuffer).reduce((s, b) => s + String.fromCharCode(b), "")
-    );
-
-    // Detect content types
-    const baseContentType = baseImageResp.headers.get("content-type") || "image/jpeg";
-    const logoContentType = logoResp.headers.get("content-type") || "image/svg+xml";
-
-    // Call AI image editing with both images
+    // Call AI image editing — images are already base64 data URLs from the client
     const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -72,15 +49,11 @@ serve(async (req) => {
               },
               {
                 type: "image_url",
-                image_url: {
-                  url: `data:${baseContentType};base64,${baseImageB64}`,
-                },
+                image_url: { url: baseImageDataUrl },
               },
               {
                 type: "image_url",
-                image_url: {
-                  url: `data:${logoContentType};base64,${logoB64}`,
-                },
+                image_url: { url: logoDataUrl },
               },
             ],
           },

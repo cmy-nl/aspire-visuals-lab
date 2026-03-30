@@ -9,6 +9,36 @@ import mockupCards from "@/assets/mockup-cards.jpg";
 import mockupPackaging from "@/assets/mockup-packaging.jpg";
 import mockupMerch from "@/assets/mockup-merch.jpg";
 
+/** Convert an image URL (including SVG) to a PNG base64 data URL via canvas */
+function imageUrlToDataUrl(url: string, maxWidth = 1024): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => {
+      const scale = Math.min(1, maxWidth / img.naturalWidth);
+      const w = Math.round(img.naturalWidth * scale);
+      const h = Math.round(img.naturalHeight * scale);
+      const canvas = document.createElement("canvas");
+      canvas.width = w;
+      canvas.height = h;
+      const ctx = canvas.getContext("2d")!;
+      // White background for SVGs with transparency
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, w, h);
+      ctx.drawImage(img, 0, 0, w, h);
+      resolve(canvas.toDataURL("image/png"));
+    };
+    img.onerror = () => reject(new Error(`Failed to load image: ${url}`));
+    img.src = url;
+  });
+}
+
+/** Convert a local asset import (relative URL) to a base64 data URL */
+function assetToDataUrl(assetPath: string, maxWidth = 1024): Promise<string> {
+  const fullUrl = new URL(assetPath, window.location.origin).href;
+  return imageUrlToDataUrl(fullUrl, maxWidth);
+}
+
 const mockups = [
   {
     image: mockupBillboard,
@@ -84,14 +114,19 @@ const Index = () => {
       setGeneratingIndexes((prev) => new Set(prev).add(index));
 
       try {
-        // Get the full URL for the base image
         const mockup = mockups[index];
-        const baseImageUrl = new URL(mockup.image, window.location.origin).href;
+
+        // Convert both images to base64 data URLs on the client
+        // This handles SVGs by rasterizing them via canvas
+        const [baseImageDataUrl, logoDataUrl] = await Promise.all([
+          assetToDataUrl(mockup.image, 1024),
+          imageUrlToDataUrl(logoUrl.trim(), 512),
+        ]);
 
         const { data, error } = await supabase.functions.invoke("generate-mockup", {
           body: {
-            baseImageUrl,
-            logoUrl: logoUrl.trim(),
+            baseImageDataUrl,
+            logoDataUrl,
             prompt: mockup.prompt,
           },
         });
@@ -129,10 +164,8 @@ const Index = () => {
     setIsGeneratingAll(true);
     toast.info("Generating all 6 mockups — this takes about 30-60 seconds…");
 
-    // Generate sequentially to avoid rate limits
     for (let i = 0; i < mockups.length; i++) {
       await generateSingleMockup(i);
-      // Small delay between requests to avoid rate limiting
       if (i < mockups.length - 1) {
         await new Promise((r) => setTimeout(r, 2000));
       }
@@ -269,7 +302,6 @@ const Index = () => {
                 index={i}
                 isGenerating={generatingIndexes.has(i)}
               />
-              {/* Individual generate button */}
               {!generatedImages[i] && !generatingIndexes.has(i) && (
                 <button
                   onClick={() => generateSingleMockup(i)}
