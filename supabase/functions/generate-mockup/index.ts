@@ -40,12 +40,11 @@ async function logoUrlToRasterDataUrl(logoUrl: string): Promise<string> {
     svgText.startsWith("<?xml");
 
   if (isSvg) {
-    const pngBytes = render(svgText, {
+    const pngBytes = await svg2png(svgText, {
       fitTo: {
         mode: "width",
         value: 1200,
       },
-      background: "rgba(255, 255, 255, 0)",
     });
 
     return toPngDataUrl(pngBytes, "image/png");
