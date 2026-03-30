@@ -9,34 +9,23 @@ import mockupCards from "@/assets/mockup-cards.jpg";
 import mockupPackaging from "@/assets/mockup-packaging.jpg";
 import mockupMerch from "@/assets/mockup-merch.jpg";
 
-/** Convert an image URL (including SVG) to a PNG base64 data URL via canvas */
-function imageUrlToDataUrl(url: string, maxWidth = 1024): Promise<string> {
+/** Convert any image URL to a base64 data URL using fetch + FileReader */
+async function imageUrlToBase64(url: string): Promise<string> {
+  const response = await fetch(url);
+  if (!response.ok) throw new Error(`Failed to fetch image: ${response.status}`);
+  const blob = await response.blob();
   return new Promise((resolve, reject) => {
-    const img = new Image();
-    img.crossOrigin = "anonymous";
-    img.onload = () => {
-      const scale = Math.min(1, maxWidth / img.naturalWidth);
-      const w = Math.round(img.naturalWidth * scale);
-      const h = Math.round(img.naturalHeight * scale);
-      const canvas = document.createElement("canvas");
-      canvas.width = w;
-      canvas.height = h;
-      const ctx = canvas.getContext("2d")!;
-      // White background for SVGs with transparency
-      ctx.fillStyle = "#ffffff";
-      ctx.fillRect(0, 0, w, h);
-      ctx.drawImage(img, 0, 0, w, h);
-      resolve(canvas.toDataURL("image/png"));
-    };
-    img.onerror = () => reject(new Error(`Failed to load image: ${url}`));
-    img.src = url;
+    const reader = new FileReader();
+    reader.onloadend = () => resolve(reader.result as string);
+    reader.onerror = () => reject(new Error("FileReader failed"));
+    reader.readAsDataURL(blob);
   });
 }
 
 /** Convert a local asset import (relative URL) to a base64 data URL */
-function assetToDataUrl(assetPath: string, maxWidth = 1024): Promise<string> {
+function assetToDataUrl(assetPath: string): Promise<string> {
   const fullUrl = new URL(assetPath, window.location.origin).href;
-  return imageUrlToDataUrl(fullUrl, maxWidth);
+  return imageUrlToBase64(fullUrl);
 }
 
 const mockups = [
