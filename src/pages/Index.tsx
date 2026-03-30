@@ -108,8 +108,8 @@ const Index = () => {
         // Convert both images to base64 data URLs on the client
         // This handles SVGs by rasterizing them via canvas
         const [baseImageDataUrl, logoDataUrl] = await Promise.all([
-          assetToDataUrl(mockup.image, 1024),
-          imageUrlToDataUrl(logoUrl.trim(), 512),
+          assetToDataUrl(mockup.image),
+          imageUrlToBase64(logoUrl.trim()),
         ]);
 
         const { data, error } = await supabase.functions.invoke("generate-mockup", {
