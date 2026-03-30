@@ -17,11 +17,11 @@ serve(async (req) => {
       throw new Error("LOVABLE_API_KEY is not configured");
     }
 
-    const { baseImageDataUrl, logoDataUrl, prompt } = await req.json();
+    const { baseImageDataUrl, logoUrl, prompt } = await req.json();
 
-    if (!baseImageDataUrl || !logoDataUrl || !prompt) {
+    if (!baseImageDataUrl || !logoUrl || !prompt) {
       return new Response(
-        JSON.stringify({ error: "Missing required fields: baseImageDataUrl, logoDataUrl, prompt" }),
+        JSON.stringify({ error: "Missing required fields: baseImageDataUrl, logoUrl, prompt" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
