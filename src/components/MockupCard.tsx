@@ -62,7 +62,7 @@ const MockupCard = ({
           {category}
         </span>
         {generatedImage && (
-          <span className="absolute top-4 right-4 px-3 py-1 text-xs font-body font-medium tracking-widest uppercase bg-green-600/90 text-white rounded-full z-10">
+          <span className="absolute top-4 right-4 px-3 py-1 text-xs font-body font-medium tracking-widest uppercase bg-accent text-accent-foreground rounded-full z-10">
             AI Generated
           </span>
         )}
