@@ -16,13 +16,13 @@ const mockups = [
     category: "Billboard",
     description: "Your brand dominates the iconic Times Square skyline — a massive LED display surrounded by the electric energy of the city that never sleeps.",
     overlay: {
-      top: "12%",
+      top: "18%",
       left: "50%",
-      width: "55%",
-      maxHeight: "35%",
+      width: "45%",
+      maxHeight: "30%",
       transform: "translateX(-50%)",
       opacity: 0.95,
-      filter: "brightness(1.1) drop-shadow(0 0 30px rgba(255,255,255,0.4))",
+      filter: "brightness(1.2) drop-shadow(0 0 40px rgba(255,255,255,0.5))",
     },
   },
   {
