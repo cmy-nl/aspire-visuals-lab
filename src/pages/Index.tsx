@@ -1,4 +1,7 @@
+import { useState, useCallback } from "react";
+import { toast } from "sonner";
 import MockupCard from "@/components/MockupCard";
+import { supabase } from "@/integrations/supabase/client";
 import mockupBillboard from "@/assets/mockup-billboard.jpg";
 import mockupBuilding from "@/assets/mockup-building.jpg";
 import mockupStorefront from "@/assets/mockup-storefront.jpg";
@@ -6,102 +9,144 @@ import mockupCards from "@/assets/mockup-cards.jpg";
 import mockupPackaging from "@/assets/mockup-packaging.jpg";
 import mockupMerch from "@/assets/mockup-merch.jpg";
 
-// ✅ Change this URL to swap the brand across all mockups
-const LOGO_URL = "https://brandforge.com/wp-content/themes/brandforge-theme/images/shared/main-logo-lite.svg";
-
 const mockups = [
   {
     image: mockupBillboard,
     title: "Times Square Digital Billboard",
     category: "Billboard",
-    description: "Your brand dominates the iconic Times Square skyline — a massive LED display surrounded by the electric energy of the city that never sleeps.",
-    overlay: {
-      top: "18%",
-      left: "50%",
-      width: "45%",
-      maxHeight: "30%",
-      transform: "translateX(-50%)",
-      opacity: 0.95,
-      filter: "brightness(1.2) drop-shadow(0 0 40px rgba(255,255,255,0.5))",
-    },
+    description:
+      "Your brand dominates the iconic Times Square skyline — a massive LED display surrounded by the electric energy of the city that never sleeps.",
+    prompt:
+      "Take the second image (a logo) and place it prominently on the blank white LED billboard screen in the first image. The logo should be centered on the billboard, large and clearly visible, with a subtle LED glow effect. Make it look like the logo is actually being displayed on the digital screen. Keep the rest of the scene exactly as is.",
   },
   {
     image: mockupBuilding,
     title: "Corporate Headquarters",
     category: "Architecture",
-    description: "A sleek glass skyscraper at golden hour, crowned with your illuminated logo — the ultimate symbol of corporate ambition and scale.",
-    overlay: {
-      top: "8%",
-      left: "8%",
-      width: "42%",
-      maxHeight: "22%",
-      opacity: 0.9,
-      filter: "brightness(1.2) drop-shadow(0 0 20px rgba(255,255,255,0.3))",
-    },
+    description:
+      "A sleek glass skyscraper at golden hour, crowned with your illuminated logo — the ultimate symbol of corporate ambition and scale.",
+    prompt:
+      "Take the second image (a logo) and place it on the blank white illuminated sign panel on the upper portion of the skyscraper in the first image. The logo should appear as a large backlit building sign, glowing white against the glass facade. Make it look realistic with proper lighting matching the golden hour scene. Keep the rest of the scene exactly as is.",
   },
   {
     image: mockupStorefront,
     title: "Flagship Retail Storefront",
     category: "Retail",
-    description: "A luxury flagship store glowing on a rain-slicked street. Warm light spills through floor-to-ceiling windows as the city moves around it.",
-    overlay: {
-      top: "8%",
-      left: "50%",
-      width: "35%",
-      maxHeight: "18%",
-      transform: "translateX(-50%)",
-      opacity: 0.95,
-      filter: "brightness(1.15) drop-shadow(0 0 15px rgba(255,255,255,0.5))",
-    },
+    description:
+      "A luxury flagship store glowing on a rain-slicked street. Warm light spills through floor-to-ceiling windows as the city moves around it.",
+    prompt:
+      "Take the second image (a logo) and place it on the blank white illuminated sign panel above the store entrance in the first image. The logo should appear as a premium backlit storefront sign, glowing warmly. Make it look realistic and properly lit to match the nighttime scene. Keep the rest of the scene exactly as is.",
   },
   {
     image: mockupCards,
     title: "Executive Business Cards",
     category: "Print",
-    description: "Gold foil embossing on thick cotton stock. Every detail communicates prestige — from the paper grain to the metallic sheen.",
-    overlay: {
-      top: "28%",
-      left: "18%",
-      width: "32%",
-      maxHeight: "22%",
-      opacity: 0.6,
-      blendMode: "multiply",
-      filter: "contrast(1.1)",
-    },
+    description:
+      "Gold foil embossing on thick cotton stock. Every detail communicates prestige — from the paper grain to the metallic sheen.",
+    prompt:
+      "Take the second image (a logo) and place it centered on the blank white face of the top business card in the first image. The logo should appear embossed or printed on the card with a subtle gold foil effect, matching the premium aesthetic. Make it look like the logo is actually printed on the card with proper perspective and shadows. Keep the rest of the scene exactly as is.",
   },
   {
     image: mockupPackaging,
     title: "Premium Product Packaging",
     category: "Packaging",
-    description: "The unboxing moment, elevated. Rigid construction, magnetic closure, and soft-touch finish create a tactile brand experience.",
-    overlay: {
-      top: "12%",
-      left: "38%",
-      width: "35%",
-      maxHeight: "25%",
-      transform: "perspective(800px) rotateX(5deg) rotateY(-15deg)",
-      opacity: 0.65,
-      blendMode: "multiply",
-    },
+    description:
+      "The unboxing moment, elevated. Rigid construction, magnetic closure, and soft-touch finish create a tactile brand experience.",
+    prompt:
+      "Take the second image (a logo) and place it centered on the white lid of the product packaging box in the first image. The logo should appear printed or embossed on the box lid, with proper perspective matching the box angle. Make it look realistic with subtle shadows. Keep the rest of the scene exactly as is.",
   },
   {
     image: mockupMerch,
     title: "Branded Merchandise",
     category: "Apparel",
-    description: "From embroidered hoodies to branded essentials — merchandise that builds culture and community around your brand.",
-    overlay: {
-      top: "30%",
-      left: "50%",
-      width: "26%",
-      maxHeight: "18%",
-      transform: "translateX(-50%)",
-      opacity: 0.85,
-      filter: "invert(1) brightness(1.5) drop-shadow(0 0 8px rgba(255,255,255,0.4))",
-    },
+    description:
+      "From embroidered hoodies to branded essentials — merchandise that builds culture and community around your brand.",
+    prompt:
+      "Take the second image (a logo) and place it on the upper chest area of the black hoodie in the first image. The logo should appear as a white or light-colored embroidered patch or screen print, clearly visible against the dark fabric. Make it look like a realistic embroidered or printed logo on clothing. Keep the rest of the scene exactly as is.",
   },
 ];
 
 const Index = () => {
+  const [logoUrl, setLogoUrl] = useState(
+    "https://brandforge.com/wp-content/themes/brandforge-theme/images/shared/main-logo-lite.svg"
+  );
+  const [generatedImages, setGeneratedImages] = useState<Record<number, string>>({});
+  const [generatingIndexes, setGeneratingIndexes] = useState<Set<number>>(new Set());
+  const [isGeneratingAll, setIsGeneratingAll] = useState(false);
+
+  const generateSingleMockup = useCallback(
+    async (index: number) => {
+      if (!logoUrl.trim()) {
+        toast.error("Please enter a logo URL first");
+        return;
+      }
+
+      setGeneratingIndexes((prev) => new Set(prev).add(index));
+
+      try {
+        // Get the full URL for the base image
+        const mockup = mockups[index];
+        const baseImageUrl = new URL(mockup.image, window.location.origin).href;
+
+        const { data, error } = await supabase.functions.invoke("generate-mockup", {
+          body: {
+            baseImageUrl,
+            logoUrl: logoUrl.trim(),
+            prompt: mockup.prompt,
+          },
+        });
+
+        if (error) throw error;
+
+        if (data?.error) {
+          throw new Error(data.error);
+        }
+
+        if (data?.imageData) {
+          setGeneratedImages((prev) => ({ ...prev, [index]: data.imageData }));
+          toast.success(`${mockup.title} generated!`);
+        }
+      } catch (err: any) {
+        console.error(`Failed to generate mockup ${index}:`, err);
+        toast.error(`Failed: ${err.message || "Unknown error"}`);
+      } finally {
+        setGeneratingIndexes((prev) => {
+          const next = new Set(prev);
+          next.delete(index);
+          return next;
+        });
+      }
+    },
+    [logoUrl]
+  );
+
+  const generateAll = useCallback(async () => {
+    if (!logoUrl.trim()) {
+      toast.error("Please enter a logo URL first");
+      return;
+    }
+
+    setIsGeneratingAll(true);
+    toast.info("Generating all 6 mockups — this takes about 30-60 seconds…");
+
+    // Generate sequentially to avoid rate limits
+    for (let i = 0; i < mockups.length; i++) {
+      await generateSingleMockup(i);
+      // Small delay between requests to avoid rate limiting
+      if (i < mockups.length - 1) {
+        await new Promise((r) => setTimeout(r, 2000));
+      }
+    }
+
+    setIsGeneratingAll(false);
+    toast.success("All mockups generated!");
+  }, [logoUrl, generateSingleMockup]);
+
+  const resetAll = () => {
+    setGeneratedImages({});
+    toast.info("Reset to blank mockups");
+  };
+
   return (
     <div className="min-h-screen bg-hero-gradient">
       <style>{`
@@ -113,23 +158,100 @@ const Index = () => {
 
       {/* Hero */}
       <header className="relative py-24 md:py-32 px-6 text-center overflow-hidden">
-        <div className="absolute inset-0 opacity-[0.03]" style={{
-          backgroundImage: 'radial-gradient(circle at 1px 1px, hsl(40 60% 55%) 1px, transparent 0)',
-          backgroundSize: '48px 48px'
-        }} />
+        <div
+          className="absolute inset-0 opacity-[0.03]"
+          style={{
+            backgroundImage:
+              "radial-gradient(circle at 1px 1px, hsl(40 60% 55%) 1px, transparent 0)",
+            backgroundSize: "48px 48px",
+          }}
+        />
         <div className="relative max-w-3xl mx-auto">
-          <p className="font-body text-sm tracking-[0.3em] uppercase text-muted-foreground mb-6"
-             style={{ animation: 'fadeSlideUp 0.6s cubic-bezier(0.16,1,0.3,1) 0ms forwards', opacity: 0 }}>
+          <p
+            className="font-body text-sm tracking-[0.3em] uppercase text-muted-foreground mb-6"
+            style={{
+              animation: "fadeSlideUp 0.6s cubic-bezier(0.16,1,0.3,1) 0ms forwards",
+              opacity: 0,
+            }}
+          >
             BrandForge Mockup Gallery
           </p>
-          <h1 className="font-display text-5xl md:text-7xl font-bold text-gradient-gold mb-6 leading-[1.1]"
-              style={{ animation: 'fadeSlideUp 0.7s cubic-bezier(0.16,1,0.3,1) 100ms forwards', opacity: 0 }}>
+          <h1
+            className="font-display text-5xl md:text-7xl font-bold text-gradient-gold mb-6 leading-[1.1]"
+            style={{
+              animation: "fadeSlideUp 0.7s cubic-bezier(0.16,1,0.3,1) 100ms forwards",
+              opacity: 0,
+            }}
+          >
             Where Will Your Logo Live?
           </h1>
-          <p className="font-body text-lg text-muted-foreground max-w-xl mx-auto leading-relaxed"
-             style={{ animation: 'fadeSlideUp 0.7s cubic-bezier(0.16,1,0.3,1) 200ms forwards', opacity: 0 }}>
-            Six cinematic mockups that show your brand in the places entrepreneurs dream about.
+          <p
+            className="font-body text-lg text-muted-foreground max-w-xl mx-auto leading-relaxed mb-10"
+            style={{
+              animation: "fadeSlideUp 0.7s cubic-bezier(0.16,1,0.3,1) 200ms forwards",
+              opacity: 0,
+            }}
+          >
+            Paste your logo URL and watch AI place it into six cinematic real-world
+            mockups.
           </p>
+
+          {/* Logo URL input + Generate */}
+          <div
+            className="max-w-2xl mx-auto flex flex-col sm:flex-row gap-3"
+            style={{
+              animation: "fadeSlideUp 0.7s cubic-bezier(0.16,1,0.3,1) 300ms forwards",
+              opacity: 0,
+            }}
+          >
+            <input
+              type="url"
+              placeholder="Paste your logo SVG/PNG URL…"
+              value={logoUrl}
+              onChange={(e) => setLogoUrl(e.target.value)}
+              className="flex-1 px-5 py-3.5 rounded-xl bg-card border border-border text-foreground font-body text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"
+            />
+            <button
+              onClick={generateAll}
+              disabled={isGeneratingAll || !logoUrl.trim()}
+              className="px-8 py-3.5 rounded-xl bg-primary text-primary-foreground font-body font-semibold text-sm tracking-wide uppercase transition-all hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+            >
+              {isGeneratingAll ? "Generating…" : "Generate All"}
+            </button>
+            {Object.keys(generatedImages).length > 0 && (
+              <button
+                onClick={resetAll}
+                className="px-6 py-3.5 rounded-xl bg-secondary text-secondary-foreground font-body font-medium text-sm tracking-wide uppercase transition-all hover:brightness-110 whitespace-nowrap"
+              >
+                Reset
+              </button>
+            )}
+          </div>
+
+          {/* Logo preview */}
+          {logoUrl.trim() && (
+            <div
+              className="mt-6 flex items-center justify-center gap-3"
+              style={{
+                animation: "fadeSlideUp 0.5s cubic-bezier(0.16,1,0.3,1) 400ms forwards",
+                opacity: 0,
+              }}
+            >
+              <span className="font-body text-xs text-muted-foreground uppercase tracking-widest">
+                Logo preview:
+              </span>
+              <div className="h-10 px-4 py-1 bg-card/50 border border-border rounded-lg flex items-center">
+                <img
+                  src={logoUrl}
+                  alt="Logo preview"
+                  className="h-full w-auto max-w-[200px] object-contain"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).style.display = "none";
+                  }}
+                />
+              </div>
+            </div>
+          )}
         </div>
       </header>
 
@@ -137,7 +259,27 @@ const Index = () => {
       <main className="max-w-7xl mx-auto px-6 pb-24">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {mockups.map((mockup, i) => (
-            <MockupCard key={mockup.title} {...mockup} logoUrl={LOGO_URL} index={i} />
+            <div key={mockup.title} className="relative">
+              <MockupCard
+                image={mockup.image}
+                generatedImage={generatedImages[i] || null}
+                title={mockup.title}
+                category={mockup.category}
+                description={mockup.description}
+                index={i}
+                isGenerating={generatingIndexes.has(i)}
+              />
+              {/* Individual generate button */}
+              {!generatedImages[i] && !generatingIndexes.has(i) && (
+                <button
+                  onClick={() => generateSingleMockup(i)}
+                  disabled={!logoUrl.trim() || isGeneratingAll}
+                  className="absolute bottom-24 right-6 px-4 py-2 rounded-lg bg-primary/90 text-primary-foreground font-body text-xs font-medium tracking-wide uppercase transition-all hover:bg-primary disabled:opacity-40 disabled:cursor-not-allowed z-20"
+                >
+                  Generate
+                </button>
+              )}
+            </div>
           ))}
         </div>
       </main>
