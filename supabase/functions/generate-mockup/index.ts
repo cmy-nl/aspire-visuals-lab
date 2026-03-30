@@ -1,5 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { render } from "jsr:@nick/resvg";
+import { svg2png } from "jsr:@hugojosefson/svg2png@1.0.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
