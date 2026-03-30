@@ -1,10 +1,58 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { render } from "jsr:@nick/resvg";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
+
+const textDecoder = new TextDecoder();
+
+function bytesToBase64(bytes: Uint8Array): string {
+  let binary = "";
+  const chunkSize = 0x8000;
+
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize));
+  }
+
+  return btoa(binary);
+}
+
+function toPngDataUrl(bytes: Uint8Array, mimeType = "image/png") {
+  return `data:${mimeType};base64,${bytesToBase64(bytes)}`;
+}
+
+async function logoUrlToRasterDataUrl(logoUrl: string): Promise<string> {
+  const logoResponse = await fetch(logoUrl);
+  if (!logoResponse.ok) {
+    throw new Error(`Failed to fetch logo: ${logoResponse.status}`);
+  }
+
+  const logoBytes = new Uint8Array(await logoResponse.arrayBuffer());
+  const contentType = logoResponse.headers.get("content-type")?.toLowerCase() ?? "";
+  const svgText = textDecoder.decode(logoBytes).trimStart();
+  const isSvg =
+    contentType.includes("image/svg") ||
+    contentType.includes("text/xml") ||
+    svgText.startsWith("<svg") ||
+    svgText.startsWith("<?xml");
+
+  if (isSvg) {
+    const pngBytes = render(svgText, {
+      fitTo: {
+        mode: "width",
+        value: 1200,
+      },
+      background: "rgba(255, 255, 255, 0)",
+    });
+
+    return toPngDataUrl(pngBytes, "image/png");
+  }
+
+  return toPngDataUrl(logoBytes, contentType || "image/png");
+}
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -29,19 +77,9 @@ serve(async (req) => {
     console.log("Calling AI gateway with model: google/gemini-3.1-flash-image-preview");
     console.log("Base image data URL length:", baseImageDataUrl.length);
 
-    const logoResponse = await fetch(logoUrl);
-    if (!logoResponse.ok) {
-      throw new Error(`Failed to fetch logo: ${logoResponse.status}`);
-    }
-
-    const logoContentType = logoResponse.headers.get("content-type") || "image/svg+xml";
-    const logoBuffer = await logoResponse.arrayBuffer();
-    const logoBase64 = btoa(String.fromCharCode(...new Uint8Array(logoBuffer)));
-    const logoDataUrl = `data:${logoContentType};base64,${logoBase64}`;
-
+    const logoDataUrl = await logoUrlToRasterDataUrl(logoUrl);
     console.log("Logo data URL length:", logoDataUrl.length);
 
-    // Call AI image editing — base scene is provided by the client, logo is fetched here to avoid browser CORS issues
     const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -99,10 +137,9 @@ serve(async (req) => {
       throw new Error("AI did not return an image");
     }
 
-    return new Response(
-      JSON.stringify({ imageData: generatedImageUrl }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    return new Response(JSON.stringify({ imageData: generatedImageUrl }), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   } catch (e) {
     console.error("generate-mockup error:", e);
     return new Response(
