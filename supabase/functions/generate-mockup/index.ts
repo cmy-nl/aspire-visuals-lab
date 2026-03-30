@@ -28,9 +28,20 @@ serve(async (req) => {
 
     console.log("Calling AI gateway with model: google/gemini-3.1-flash-image-preview");
     console.log("Base image data URL length:", baseImageDataUrl.length);
+
+    const logoResponse = await fetch(logoUrl);
+    if (!logoResponse.ok) {
+      throw new Error(`Failed to fetch logo: ${logoResponse.status}`);
+    }
+
+    const logoContentType = logoResponse.headers.get("content-type") || "image/svg+xml";
+    const logoBuffer = await logoResponse.arrayBuffer();
+    const logoBase64 = btoa(String.fromCharCode(...new Uint8Array(logoBuffer)));
+    const logoDataUrl = `data:${logoContentType};base64,${logoBase64}`;
+
     console.log("Logo data URL length:", logoDataUrl.length);
 
-    // Call AI image editing — images are already base64 data URLs from the client
+    // Call AI image editing — base scene is provided by the client, logo is fetched here to avoid browser CORS issues
     const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {

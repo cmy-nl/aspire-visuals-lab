@@ -112,7 +112,7 @@ const Index = () => {
         const { data, error } = await supabase.functions.invoke("generate-mockup", {
           body: {
             baseImageDataUrl,
-            logoDataUrl,
+            logoUrl: logoUrl.trim(),
             prompt: mockup.prompt,
           },
         });
